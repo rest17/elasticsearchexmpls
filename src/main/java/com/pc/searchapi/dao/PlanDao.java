@@ -9,6 +9,7 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.springframework.stereotype.Repository;
+import java.util.List;
 
 import java.util.Map;
 import java.util.UUID;
@@ -47,7 +48,7 @@ public class PlanDao {
         return data;
     }
 
-    public Map<String, Object> getPlanBySearchCriteria(String id){
+    public List<PlanData> getPlanBySearchCriteria(String id){
         GetRequest getRequest = new GetRequest(INDEX, TYPE, id);
         GetResponse getResponse = null;
         try {
