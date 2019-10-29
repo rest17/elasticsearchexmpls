@@ -1,4 +1,4 @@
-package com.pc.serachapi.config;
+package com.pc.searchapi.config;
 
 /**
  * Created by chitra_chitralekha on 10/28/19.
