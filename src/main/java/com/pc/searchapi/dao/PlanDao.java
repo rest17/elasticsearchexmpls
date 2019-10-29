@@ -1,18 +1,24 @@
 package com.pc.searchapi.dao;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pc.searchapi.model.PlanData;
 import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.action.get.GetRequest;
-import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.unit.Fuzziness;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.json.simple.parser.JSONParser;
 import org.springframework.stereotype.Repository;
-import java.util.List;
 
-import java.util.Map;
-import java.util.UUID;
+import java.io.IOException;
+import java.util.*;
 
 /**
  * Created by chitra_chitralekha on 10/28/19.
@@ -48,16 +54,43 @@ public class PlanDao {
         return data;
     }
 
-    public List<PlanData> getPlanBySearchCriteria(String id){
-        GetRequest getRequest = new GetRequest(INDEX, TYPE, id);
-        GetResponse getResponse = null;
-        try {
-            getResponse = restHighLevelClient.get(getRequest);
-        } catch (java.io.IOException e){
-            e.getLocalizedMessage();
+    public List<PlanData> getPlanBySearchCriteria(String criteria)throws IOException, JsonParseException  {
+        List<PlanData> results = new ArrayList<PlanData>();
+        try{
+        JSONParser parser = new JSONParser();
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        QueryBuilder matchQueryBuilder = QueryBuilders.matchQuery("planName",criteria )
+                .fuzziness(Fuzziness.AUTO)
+                .maxExpansions(10);
+        sourceBuilder.query(matchQueryBuilder);
+        SearchRequest searchRequest = new SearchRequest();
+        searchRequest.indices(INDEX);
+        searchRequest.source(sourceBuilder);
+        SearchResponse response = restHighLevelClient.search(searchRequest);
+        List<SearchHit> searchHits = Arrays.asList(response.getHits().getHits());
+        searchHits.forEach(
+                hit ->
+                {try{
+                    results.add(objectMapper.readValue(hit.getSourceAsString(), PlanData.class));
+                }
+                catch (IOException e)
+                {
+                    e.getLocalizedMessage();
+                    System.out.println(e.getMessage());
+                }
+
+                }) ;
         }
-        Map<String, Object> sourceAsMap = getResponse.getSourceAsMap();
-        return sourceAsMap;
+        catch(ElasticsearchException e) {
+            e.getDetailedMessage();
+            System.out.println(e.getMessage());
+        }
+        catch (IOException e){
+            e.getLocalizedMessage();
+            System.out.println(e.getMessage());
+        }
+
+        return results;
     }
 
 }

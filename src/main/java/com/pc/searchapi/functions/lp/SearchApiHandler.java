@@ -6,20 +6,20 @@ import com.amazonaws.serverless.proxy.model.AwsProxyResponse;
 import com.amazonaws.serverless.proxy.spring.SpringBootLambdaContainerHandler;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestStreamHandler;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.pc.searchapi.dao.PlanDao;
 import com.pc.searchapi.exceptions.SearchApiClientException;
 import com.pc.searchapi.exceptions.SearchApiInternalExcpetion;
+import com.pc.searchapi.model.PlanData;
 import com.pc.searchapi.util.SearchApiMsg;
 import com.pc.searchapi.util.SearchApiUtil;
 import org.apache.http.HttpStatus;
 import org.apache.log4j.Logger;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectReader;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import org.json.simple.JSONObject;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.List;
 
 /**
  * Created by chitra_chitralekha on 10/28/19.
@@ -29,6 +29,7 @@ public class SearchApiHandler implements RequestStreamHandler {
 
         private static SpringBootLambdaContainerHandler<AwsProxyRequest, AwsProxyResponse> handler;
         static final Logger log = Logger.getLogger(SearchApiHandler.class);
+        PlanDao planDao;
 
         static {
             try {
@@ -79,23 +80,20 @@ public class SearchApiHandler implements RequestStreamHandler {
         JSONObject responseJson = new JSONObject();
         JSONObject headers = new JSONObject();
 
+
         try {
 
             if (parsedInput.get("pathParameters") == null) {
                 throw new SearchApiClientException(HttpStatus.SC_BAD_REQUEST, String.format(SearchApiMsg.MISSING_INVALID_FIELD_ERR, "pathParameters"));
             }
-
             String planName = (String) ((JSONObject) parsedInput.get("pathParameters")).get("planname");
-
             logItems.put("planName", planName);
+            List<PlanData> result=planDao.getPlanBySearchCriteria(planName);
 
-            ByPassInfo retrievedByPassInfo = adminBO.getByPassInfo(byPassType, byPassCustomerId);
 
-            if (retrievedByPassInfo != null) {
-                headers.put(HttpHeaders.LAST_MODIFIED, DateUtils.formatDate(retrievedByPassInfo.getLastUpdated()));
-                headers.put(HttpHeaders.ETAG, "\"" + retrievedByPassInfo.getVersion() + "\"");
 
-                responseJson.put("body", byPassInfoPublicWriter.writeValueAsString(retrievedByPassInfo));
+            if (result != null) {
+                responseJson.put("body", result);
                 responseJson.put("statusCode", HttpStatus.SC_OK);
                 responseJson.put("headers", headers);
 
@@ -103,10 +101,12 @@ public class SearchApiHandler implements RequestStreamHandler {
                 throw new SearchApiClientException(HttpStatus.SC_NOT_FOUND, "No Search Data Availbale");
             }
 
-        } catch (IllegalArgumentException e) {
-            throw new SearchApiClientException(HttpStatus.SC_BAD_REQUEST, e.toString(), e);
-        } catch (JsonProcessingException e) {
+        }
+        catch (IOException e){
             throw new SearchApiInternalExcpetion(HttpStatus.SC_INTERNAL_SERVER_ERROR, e.toString(), e);
+        }
+        catch (IllegalArgumentException e) {
+            throw new SearchApiClientException(HttpStatus.SC_BAD_REQUEST, e.toString(), e);
         }
         return responseJson;
     }

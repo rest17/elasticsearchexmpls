@@ -66,10 +66,9 @@ public class ElasticSearchConfiguration extends AbstractFactoryBean {
             signer.setServiceName(serviceName);
             signer.setRegionName(region);
             HttpRequestInterceptor interceptor = new AWSRequestSigningApacheInterceptor(serviceName, signer, credentialsProvider);
-            return new RestHighLevelClient(RestClient.builder(HttpHost.create(aesEndpoint)).setHttpClientConfigCallback(hacb -> hacb.addInterceptorLast(interceptor)));
         } catch (Exception e) {
             LOG.error(e.getMessage());
         }
-        return restHighLevelClient;
+        return new RestHighLevelClient(RestClient.builder(HttpHost.create(aesEndpoint)).setHttpClientConfigCallback(hacb -> hacb.addInterceptorLast(interceptor)));
     }
 }
